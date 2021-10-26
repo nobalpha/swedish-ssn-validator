@@ -1,4 +1,19 @@
+// TODO Make Turkish SSN documentation
+// TODO make a general ssn class and call its functions, like ssn.checksum("tr", 12345678902) or ssn.regex("tr", 12345678902)
 "use strict";
+
+/**
+ * As there is a
+ *
+ *
+ * @param {string} ssn Turkish Social Security Number.
+ * @param {string} masker A one char character to use in masking.
+ * @return {string} Returns the masked version of SSN number.
+ */
+
+function mod(n, m) {
+    return ((n % m) + m) % m;
+}
 
 /** Public decorator class being responsible of redirections which is the entry-point. */
 export class SSN {
@@ -22,6 +37,7 @@ export class SSN {
 
     COUNTRY_TABLE = {
         SE: swedishSSN,
+        TR: turkishSSN,
     };
 
     constructor(country_code: string, debug = false, info = false) {
@@ -48,11 +64,103 @@ export class SSN {
      * Decorates SSN masker functions by determining the country.
      *
      * @param {string} ssn Social Security Number.
+     * @param {string} masker A one char character to use in masking.
      * @return {string} Returnes the masked version of SSN number which is redirected to a specific country-based SSN masker.
      */
-    mask(ssn: string): string {
-        return this.COUNTRY_TABLE[this.country_code].mask(ssn);
+    mask(ssn: string, masker: string): string {
+        return this.COUNTRY_TABLE[this.country_code].mask(ssn, masker);
     }
+
+    /**
+     * Chunks the provided string from given index or indices.
+     *
+     * @param {string} string A string to be chunked.
+     * @param {boolean} [debug=false] Debugger activation.
+     * @param {number[]} index Index or indices to cut from.
+     * @return {string[]} Returns the chunked parts of given string.
+     */
+    static divideByIndex = (
+        string: string,
+        debug: boolean = false,
+        ...index: number[]
+    ): any[] => {
+        let [indices, arr] = [[0, ...index, string.length], []];
+        for (let i = 0; i < indices.length - 1; i++) {
+            arr.push(string.slice(indices[i], indices[i + 1]));
+        }
+
+        if (debug) {
+            console.log(`[Debug] Indices array: ${indices}`);
+            console.log(`[Debug] Sliced array: ${arr}`);
+        }
+
+        return arr;
+    };
+}
+
+/** Class containing Swedish SSN assets */
+
+class turkishSSN {
+    /**
+     * Checks if provided Turkish SSN number is valid.
+     *
+     * @param {string} ssn Turkish Social Security Number.
+     * @param {boolean} [debug=false] Debugger activation.
+     * @param {boolean} [info=false] Checkpoint info activation.
+     * @return {boolean} Returns the validity of SSN number.
+     */
+
+    static validate = (
+        ssn: string,
+        debug: boolean = false,
+        info: boolean = false
+    ): boolean => {
+        if (!/[1-9][0-9]{10}/.test(ssn)) {
+            return false;
+        }
+
+        const result = ssn
+            .slice(0, 9)
+            .split("")
+            .map((x) => parseInt(x, 10))
+            .reduce(
+                function (acc: { odds: number; evens: number }, val, index) {
+                    (index + 1) % 2 ? (acc.odds += val) : (acc.evens += val);
+                    return acc;
+                },
+                { odds: 0, evens: 0 }
+            );
+        console.log(result);
+        /* const tenth_digit = SSN.mod(result.odds * 7 - result.evens, 10);
+        console.log(tenth_digit);
+        if (tenth_digit !== SSN.mod(result.odds * 7 + result.evens * 9, 10))
+            return false;
+
+        const last_digit = (result.odds + result.evens + tenth_digit) % 10;
+        if (last_digit !== SSN.mod(result.odds * 8, 10)) return false;
+
+        console.log(last_digit);
+        if (
+            parseInt(ssn[9], 10) === tenth_digit &&
+            parseInt(ssn[10], 10) === last_digit
+        )
+            return true; */
+        return false;
+    };
+
+    /**
+     * Masks the provided Turkish SSN number.
+     *
+     * @param {string} ssn Turkish Social Security Number.
+     * @param {string} masker A one char character to use in masking.
+     * @return {string} Returns the masked version of SSN number.
+     */
+
+    static mask = (ssn: string, masker: string): string => {
+        const fragments = SSN.divideByIndex(ssn, false, 2, 7);
+        fragments[1] = fragments[1].replace(/\d/g, masker);
+        return fragments.join("");
+    };
 }
 
 /** Class containing Swedish SSN assets */
@@ -79,7 +187,7 @@ class swedishSSN {
 
         ssn = swedishSSN.sanitize(ssn);
 
-        let [registry, checksum] = swedishSSN.divideByIndex(
+        let [registry, checksum] = SSN.divideByIndex(
             ssn,
             debug,
             ssn.length - 1
@@ -94,9 +202,7 @@ class swedishSSN {
 
         /** Given date from SSN number. */
         let date = new Date(
-            swedishSSN
-                .divideByIndex(registry.slice(0, 8), debug, 4, 6)
-                .join("-")
+            SSN.divideByIndex(registry.slice(0, 8), debug, 4, 6).join("-")
         ); // Retrieving the date with chunking.
 
         if (debug) console.log(`[Debug] Date value gathered: ${date}`);
@@ -141,6 +247,7 @@ class swedishSSN {
      * Masks the provided Swedish SSN number.
      *
      * @param {string} ssn Swedish Social Security Number.
+     * @param {string} masker A one char character to use in masking.
      * @return {string} Returns the masked version of SSN number.
      */
     static mask = (ssn: string): string => {
@@ -169,7 +276,7 @@ class swedishSSN {
         const gender_index = ssn.length - 2;
 
         /** Parts from the chunked string. */
-        const fragments = swedishSSN.divideByIndex(
+        const fragments = SSN.divideByIndex(
             ssn,
             false,
             date_index,
@@ -207,31 +314,5 @@ class swedishSSN {
             );
 
         return ssn;
-    };
-
-    /**
-     * Chunks the provided string from given index or indices.
-     *
-     * @param {string} string A string to be chunked.
-     * @param {boolean} [debug=false] Debugger activation.
-     * @param {number[]} index Index or indices to cut from.
-     * @return {string[]} Returns the chunked parts of given string.
-     */
-    static divideByIndex = (
-        string: string,
-        debug: boolean = false,
-        ...index: number[]
-    ): any[] => {
-        let [indices, arr] = [[0, ...index, string.length], []];
-        for (let i = 0; i < indices.length - 1; i++) {
-            arr.push(string.slice(indices[i], indices[i + 1]));
-        }
-
-        if (debug) {
-            console.log(`[Debug] Indices array: ${indices}`);
-            console.log(`[Debug] Sliced array: ${arr}`);
-        }
-
-        return arr;
     };
 }

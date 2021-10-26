@@ -12,6 +12,10 @@ const data: Array<any> = [
     ["SE", "430416+1476", true], // older than 100
     ["SE", "", false], // type check
     ["SE", 12341231, false], // type check
+    ["TR", 14123584938, false], // starting condition
+    ["TR", 14123584938, false], // length check
+    // checksum
+    ["TR", 41235849385, false],
 ];
 
 for (let datum of data) {
@@ -19,7 +23,3 @@ for (let datum of data) {
     const dummy = ssn.validate(datum[1]);
     console.log(datum[1], expect(dummy).to.equal(datum[2]));
 }
-
-const ssn = new SSN("SE");
-console.log(ssn.mask("123456-1234"));
-console.log(ssn.validate("430416+1476"));
